@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.1.1/pixi.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.18.4/TweenMax.min.js"></script>
+    <title>Video Text Extraction</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../static/index.css">
+</head>
+<body class="body">
+    <div id="pixiCanvas"></div>
+    <h1 class="title">Youtube Video Analysis</h1>
+    <div class="container">
+        <section class="left">
+            <div class="loader loader--style3"  id="loading">
+                <svg version="1.1" id="loader-1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+                   width="40px" height="40px" viewBox="0 0 50 50" style="enable-background:new 0 0 50 50;" xml:space="preserve">
+                <path fill="#000" d="M43.935,25.145c0-10.318-8.364-18.683-18.683-18.683c-10.318,0-18.683,8.365-18.683,18.683h4.068c0-8.071,6.543-14.615,14.615-14.615c8.072,0,14.615,6.543,14.615,14.615H43.935z">
+                  <animateTransform attributeType="xml"
+                    attributeName="transform"
+                    type="rotate"
+                    from="0 25 25"
+                    to="360 25 25"
+                    dur="0.6s"
+                    repeatCount="indefinite"/>
+                  </path>
+                </svg>
+              </div>
+            <input type="text" id="youtubeUrl" placeholder="Enter URL here" />
+            <div class="radio-button-summarize">
+                <input type="radio" id="summarize-option" name="analysis-option" value="summarize">
+                <label for="summarize-option">Summarize</label>
+            </div>
+            <button onclick="submitUrl()">Submit</button>
+            <button onclick="submitUrl1()" id="analyseComments">Analyse comments</button>
+            <div class="videoWrapper" id="videoWrapper">
+                <iframe id="youtubePlayer" src="" frameborder="0" allowfullscreen></iframe>
+            </div>
+            <div class="chart-container">
+                <div class="chart-header">Hate Speech Analysis</div>
+                <canvas id="hate-speech-analysis-chart"></canvas>
+            </div>
+        </section>
+        <section class="right">
+            <div class="output" id="output"></div>
+        </section>
+    </div>
+    
+    <script>
+        function submitUrl1() {
+            const url = document.getElementById('youtubeUrl').value;
+            console.log(url);
+            const myArray = url.split("=");
+            console.log(myArray);
+            console.log(myArray[1]);
+            window.location.href = `/video?url=${encodeURIComponent(myArray[1])}`;
+        }
+        </script>        
+    <script>
+    var hateSpeechAnalysisChart = null;
+
+        function submitUrl() {
+    const url = document.getElementById('youtubeUrl').value;
+    if (url) { // Make sure the URL is not empty
+        updateVideoPlayer(url);
+        document.getElementById('videoWrapper').style.display = 'block'; // Show video
+        document.getElementById('loading').style.display = 'block'; // Show loading
+        const isSummarizeSelected = document.getElementById('summarize-option').checked;
+        const analysisOption = isSummarizeSelected ? "summarize" : "full";
+        fetch('http://127.0.0.1:5000/convert', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url, option: analysisOption }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = ''; // Clear previous content
+            data.asr_content.split('. ').forEach((sentence, index) => {
+                const sentenceDiv = document.createElement('div');
+                sentenceDiv.textContent = sentence + (index < data.asr_content.split('. ').length - 1 ? '. ' : '');
+                sentenceDiv.classList.add('sentence');
+                sentenceDiv.setAttribute('data-index', index); // Set data attribute to link with prediction
+                outputDiv.appendChild(sentenceDiv);
+                renderHateSpeechAnalysisChart(data.hate_speech);
+            });
+            outputDiv.style.display = 'block'; // Show output
+            document.getElementById('loading').style.display = 'none'; // Hide loading
+
+            // Store predictions in the global scope to access in hover event
+            window.predictions = data.predictions;
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            document.getElementById('loading').style.display = 'none'; // Hide loading on error
+        });
+    }
+}
+
+// document.addEventListener('DOMContentLoaded', function () {
+//     document.getElementById('output').addEventListener('mouseover', function (e) {
+//         if (e.target && e.target.matches('.sentence')) {
+//             const index = parseInt(e.target.getAttribute('data-index'));
+//             const predictionsForSentence = window.predictions[index];
+//             if (predictionsForSentence) {
+//                 // Assuming predictionsForSentence is an array of arrays of objects
+//                 const formattedPredictions = predictionsForSentence.map(group =>
+//                     group.map(pred => `${pred.label}: ${pred.score.toFixed(2)}`).join(', ')
+//                 ).join('\n');
+//                 e.target.setAttribute('data-info', formattedPredictions);
+//             }
+//         }
+//     });
+// });
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('output').addEventListener('mouseover', function (e) {
+        if (e.target && e.target.matches('.sentence')) {
+            const index = parseInt(e.target.getAttribute('data-index'), 10);
+            const predictionsForSentence = window.predictions && window.predictions.length > index ? window.predictions[index] : null;
+            if (predictionsForSentence && Array.isArray(predictionsForSentence) && predictionsForSentence.length > 0) {
+                const formattedPredictions = predictionsForSentence.map(pred => {
+                    const label = pred.label === 'gender' ? 'No Hate' : pred.label;
+                    return `${label}: ${pred.score.toFixed(2)}`;
+                }).join(', ');
+                e.target.setAttribute('data-info', formattedPredictions);
+            }
+        }
+    });
+});
+
+
+
+
+        function updateVideoPlayer(url) {
+            const videoId = url.split('v=')[1];
+            const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+            document.getElementById('youtubePlayer').src = embedUrl;
+        }
+
+
+
+        function renderHateSpeechAnalysisChart(hateSpeechData) {
+    const ctx = document.getElementById('hate-speech-analysis-chart').getContext('2d');
+    // Check if a chart instance already exists
+    if (hateSpeechAnalysisChart !== null) {
+        hateSpeechAnalysisChart.destroy(); // Destroy the existing chart
+    }
+
+    // Create a copy of the hateSpeechData object to avoid modifying the original data
+    const chartData = { ...hateSpeechData };
+
+    // Replace the "gender" label with "no hate"
+    if (chartData.hasOwnProperty('gender')) {
+        chartData['No Hate'] = chartData['gender'];
+        delete chartData['gender'];
+    }
+
+    hateSpeechAnalysisChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(chartData),
+            datasets: [{
+                label: 'Hate Speech Analysis',
+                data: Object.values(chartData),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)',
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)',
+                    'rgba(199, 199, 199, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(199, 199, 199, 1)'
+                ],
+                borderWidth: 1
+            }]
+        }
+    });
+}
+        
+    </script>
+    <script src="../static/index.js"></script>
+
+</body>
+</html>

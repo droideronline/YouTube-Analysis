@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Details</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../static/space.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #e74c3c;
+            --light-bg: #f9f9f9;
+            --dark-bg: #0c0f27;
+            --text-color: #ffffff;
+            --border-color: #2c3e50;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            overflow: scroll;
+        }
+        .container {
+            width: 90%;
+            background: transparent;
+            box-shadow: 0 4px 8px var(--shadow-color);
+            /* overflow: hidden; */
+            position: relative;
+            margin-top: 50px;
+        }
+        .video-section {
+            width: 69%;
+            /* float: left; */
+            padding-top: 50px;
+            padding-bottom: 20px;
+        }
+        .aside-section {
+            width: 30%;
+            float: right;
+            overflow: auto;
+        }
+        .aside-section::-webkit-scrollbar {
+            display: none;
+            }
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            height: 0;
+            box-shadow: 0 4px 8px var(--shadow-color);
+        }
+        .video-wrapper iframe {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            border-radius: 10px;
+            
+        }
+        .comments-section,
+        .aside-content {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            margin-top:20px;
+        }
+        .comment-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 20px; 
+            display: flex; /* Use flexbox layout */
+            justify-content: space-between; /* Space between the text and the buttons */
+            align-items: center;
+        }
+        .action-buttons .button {
+            padding: 5px 10px;
+            margin-left: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+            flex-shrink: 0; /* Prevents the buttons from shrinking */
+            display: flex;
+        }
+        .comment-text {
+            flex: 1; /* Allows the comment text to grow and fill the space */
+            margin-right: 10px; /* Adds space between the text and the buttons */
+        }
+        .hate-speech-btn {
+            background-color: var(--secondary-color);
+        }
+        .sentiment-analysis-btn {
+            background-color: var(--primary-color);
+        }
+        .spam-detection-btn{
+            background-color: var(--shadow-color);
+            color: #fff;
+        }
+        .load-more-comments {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .load-more-comments:hover {
+            background-color: var(--primary-color);
+        }
+        #bg {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        .clearfix::after {
+    content: "";
+    clear: both;
+    display: table;
+}
+
+/* Adjustments for smaller screens (responsive design) */
+@media (max-width: 768px) {
+    .video-section,
+    .aside-section {
+        width: 100%;
+        margin-right: 0;
+    }
+    .aside-section {
+        padding-left: 0;
+        margin-top: 20px; /* Space between video section and aside content on small screens */
+    }
+}
+
+/* ... existing CSS ... */
+.input-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.youtube-input {
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    background-color: rgba(255, 255, 255, 0.1);
+    width: 70%;
+    max-width: 500px;
+}
+
+.fetch-details-btn {
+    padding: 10px 20px;
+    margin-left: 10px;
+    border-radius: 4px;
+    border: none;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.fetch-details-btn:hover {
+    background-color: var(--secondary-color);
+}
+
+.video-details {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 20px;
+}
+.spam-detection-btn {
+    background-color: #000; /* Black background */
+    color: #fff; /* White text */
+    margin-left: 5px; /* Maintain spacing between buttons */
+}
+.loader{
+  margin: 0 0 2em;
+  height: 100px;
+  width: 20%;
+}
+svg path,
+svg rect{
+  fill: #FF6700;
+}
+
+.popup {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 4px;
+    position: absolute;
+    z-index: 100; 
+    box-shadow: 0 4px 8px var(--shadow-color);
+    color: var(--text-color);
+    font-family: 'Arial', sans-serif;
+    max-width: 300px;
+    max-height: 200px;
+    overflow: auto; 
+}
+
+.popup ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.popup li {
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.popup li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Add hover effect for the popup */
+.popup:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transition: background-color 0.3s;
+}
+/* .analysis-section {
+    padding: 20px;
+    margin-left: 20px;
+    background: var(--light-bg);
+    color: var(--dark-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 8px var(--shadow-color);
+    overflow: hidden;
+    max-width: 100px;
+}
+*/
+/* .chart-container {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: var(--primary-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    box-shadow: inset 0 0 10px var(--shadow-color);
+}
+
+.chart-header {
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: bold;
+}  */
+
+.video-and-analysis-section {
+    display: flex;
+    justify-content: space-between; /* Adjust as needed */
+    align-items: flex-start; /* Align items at the start of the container */
+}
+
+
+    </style>
+</head>
+<body>
+    <canvas id="bg"></canvas>
+    <div class="container clearfix">
+        <div class="input-container">
+            <input type="text" id="youtube-url" class="youtube-input" placeholder="Enter YouTube URL" {% if url %}value="{{ url }}"{% endif %}>
+            <button onclick="fetchVideoDetails()" class="fetch-details-btn">Get Video Details</button>
+            <script>
+                document.addEventListener('DOMContentLoaded', (event) => {
+                    const youtubeUrlInput = document.getElementById('youtube-url');
+                    if (youtubeUrlInput && youtubeUrlInput.value) {
+                        fetchVideoDetails();
+                    }
+                });
+            </script>
+            <!-- Loader HTML -->
+            <div class="loader loader--style3" title="2" id="loading" style="display: none;">
+                <svg version="1.1" id="loader-1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+                   width="40px" height="40px" viewBox="0 0 50 50" style="enable-background:new 0 0 50 50;" xml:space="preserve">
+                <path fill="#000" d="M43.935,25.145c0-10.318-8.364-18.683-18.683-18.683c-10.318,0-18.683,8.365-18.683,18.683h4.068c0-8.071,6.543-14.615,14.615-14.615c8.072,0,14.615,6.543,14.615,14.615H43.935z">
+                  <animateTransform attributeType="xml"
+                    attributeName="transform"
+                    type="rotate"
+                    from="0 25 25"
+                    to="360 25 25"
+                    dur="0.6s"
+                    repeatCount="indefinite"/>
+                  </path>
+                </svg>
+              </div>
+    <div class="video-and-analysis-section">
+        <div class="video-section">
+            <div class="video-wrapper">
+                <!-- Embed YouTube video -->
+                <iframe id="video-iframe" src="https://www.youtube.com/embed/iueGI4CzP-0" frameborder="0" allowfullscreen></iframe>
+
+            </div>
+            <div class="video-details">
+                <!-- Video details will be inserted here by JavaScript -->
+            </div>
+            <div class="comments-section">
+                <h2>Comments</h2>
+                <!-- Comments list -->
+                <div id="comments-container">
+                    <!-- Comments will be inserted here by JavaScript -->
+                </div>
+                <div class="load-more-comments" id="load-more-comments" onclick="loadMoreComments()">Load More Comments</div>
+            </div>
+        </div>
+        <div class="aside-section">
+            <div class="aside-content">
+                <div class="chart-container">
+                    <div class="chart-header">Sentiment Analysis</div>
+                    <canvas id="sentiment-analysis-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header">Spam Analysis</div>
+                    <canvas id="spam-analysis-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-header">Hate Speech Analysis</div>
+                    <canvas id="hate-speech-analysis-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>   
+        
+    </div>
+    <script>
+        async function fetchVideoDetails() {
+            const youtubeUrl = document.getElementById('youtube-url').value;
+            const videoId = youtubeUrl.split('v=')[1].split('&')[0]; // Adjust if necessary
+            document.getElementById('video-iframe').src = `https://www.youtube.com/embed/${videoId}`;
+            // Show the loader
+            document.getElementById('loading').style.display = 'inline-block';
+            try {
+                const response = await fetch(`http://127.0.0.1:5000/analysis`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: youtubeUrl }),
+                });
+                const data = await response.json();
+                updateVideoDetails(data);
+                loadComments(data.comments);
+                performAnalysis(data.comments); 
+            } catch (error) {
+                console.error('Error fetching video details:', error);
+            }
+            
+        }
+
+        async function performAnalysis(comments) {
+            try {
+                const analysisResponse = await fetch('http://127.0.0.1:5000/analysis-comments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ comments: comments }),
+                });
+
+                const analysisData = await analysisResponse.json();
+                renderSentimentAnalysisChart(analysisData.sentiment);
+                renderSpamAnalysisChart(analysisData.spam);
+                renderHateSpeechAnalysisChart(analysisData.hate_speech); // Function to display analysis results on the page
+            } catch (error) {
+                console.error('Error performing analysis:', error);
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+
+    function updateVideoDetails(details) {
+        const videoDetailsDiv = document.querySelector('.video-details');
+        videoDetailsDiv.innerHTML = `
+            <h3>${details.title}</h3>
+            <p>${details.description}</p>
+            <p><strong>Likes:</strong> ${details.likes} <i class="like-icon"></i></p>
+            <p><strong>Views:</strong> ${details.views}</p>
+            <p><strong>Published At:</strong> ${details.publishedAt}</p>
+            <p><strong>Channel:</strong> ${details.channel}</p>
+            <p><strong>Tags:</strong> ${details.tags.join(', ')}</p>
+            <p><strong>Comment Count:</strong> ${details.commentCount}</p>
+        `;
+    }
+
+    function displayComments() {
+        const commentsContainer = document.getElementById('comments-container');
+        commentsContainer.innerHTML = ''; // Clear existing comments
+        currentComments.slice(0, commentsDisplayed).forEach(comment => {
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment-item';
+            commentElement.innerHTML = `
+                <div class="comment-text">${comment}</div>
+                <div class="action-buttons">
+                    <button class="button sentiment-analysis-btn">Sentiment</button>
+                    <button class="button hate-speech-btn">Hate Speech</button>
+                    <button class="button spam-detection-btn">Spam</button>
+                </div>
+            `;
+            commentsContainer.appendChild(commentElement);
+
+            commentElement.querySelector('.hate-speech-btn').addEventListener('click', function() {handleHateSpeech(comment, this);});
+            commentElement.querySelector('.sentiment-analysis-btn').addEventListener('click', function() {handleSentimentAnalysis(comment, this);});
+            commentElement.querySelector('.spam-detection-btn').addEventListener('click', function() {handleSpamDetection(comment, this);});
+  });
+    }
+
+    async function handleHateSpeech(comment, button) {
+        const response = await fetch(`/hate_speech?text=${encodeURIComponent(comment)}`);
+        const data = await response.json();
+        displayPopup(data, button);
+    }
+
+    async function handleSentimentAnalysis(comment, button) {
+        const response = await fetch(`/sentiment?text=${encodeURIComponent(comment)}`);
+        const data = await response.json();
+        displayPopup(data, button);
+    }
+
+    async function handleSpamDetection(comment, button) {
+        const response = await fetch(`/spam_detection?text=${encodeURIComponent(comment)}`);
+        const data = await response.json();
+        displayPopup(data, button);
+    }
+
+    function displayPopup(data, button) {
+        // Close existing popups
+        document.querySelectorAll('.popup').forEach(popup => popup.remove());
+
+        // Create a popup element
+        const popup = document.createElement('div');
+        popup.className = 'popup';
+
+        // Check if data is an array and has at least one element
+        if (Array.isArray(data) && data.length > 0) {
+            const list = document.createElement('ul');
+            data[0].forEach(item => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${item.label}: ${item.score.toFixed(2)}`;
+                list.appendChild(listItem);
+            });
+            popup.appendChild(list);
+        } else {
+            // If data is not an array or is empty
+            popup.innerText = 'No data available';
+        }
+
+        // Append the popup to the body
+        document.body.appendChild(popup);
+
+        // Get the button's position
+        const rect = button.getBoundingClientRect();
+        popup.style.left = `${rect.right + window.scrollX + 10}px`; // 10px to the right from the button's right
+        popup.style.top = `${rect.top + window.scrollY}px`; // Adjusted for scrolling
+
+        // Close popup when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!popup.contains(event.target)) {
+                popup.remove();
+            }
+        }, { once: true }); // Listener will be removed after the first execution
+    }
+
+
+
+
+
+    let currentComments = [];
+    let commentsDisplayed = 15;
+
+    function loadComments(comments) {
+        console.log(commentsDisplayed);
+        currentComments = comments; // Store comments
+        displayComments();
+    }
+
+    
+
+    function updateVideoIframe(videoId) {
+        const iframe = document.querySelector('.video-wrapper iframe');
+        iframe.src = `https://www.youtube.com/embed/${videoId}`;
+    }
+
+
+    function loadMoreComments() {
+        console.log('more comments requested')
+        commentsDisplayed += 15; // Increase the count
+        displayComments(); // Refresh the comments display
+    }
+
+    function renderSentimentAnalysisChart(sentimentData) {
+    const ctx = document.getElementById('sentiment-analysis-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(sentimentData),
+            datasets: [{
+                label: 'Sentiment Analysis',
+                data: Object.values(sentimentData),
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 99, 132, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 99, 132, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function renderSpamAnalysisChart(spamData) {
+    const ctx = document.getElementById('spam-analysis-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(spamData),
+            datasets: [{
+                label: 'Spam Analysis',
+                data: Object.values(spamData),
+                backgroundColor: [
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function renderHateSpeechAnalysisChart(hateSpeechData) {
+    const ctx = document.getElementById('hate-speech-analysis-chart').getContext('2d');
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(hateSpeechData),
+            datasets: [{
+                label: 'Hate Speech Analysis',
+                data: Object.values(hateSpeechData),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)',
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)',
+                    'rgba(199, 199, 199, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(199, 199, 199, 1)'
+                ],
+                borderWidth: 1
+            }]
+        }
+    });
+}
+
+
+    </script>
+    <script src="../static/space.js"></script>
+</body>
+</html>
